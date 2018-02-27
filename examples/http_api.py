@@ -1,18 +1,13 @@
 __author__ = 'Samuel Marks <samuelmarks@gmail.com>'
 __version__ = '0.1.0'
 
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
-from socketserver import ThreadingTCPServer
-from http.server import SimpleHTTPRequestHandler
-
+from SocketServer import ThreadingTCPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 from webbrowser import open_new_tab
 from json import dumps
+from urlparse import urlparse
 from os import environ
-
+from types import NoneType
 
 from linkedin.linkedin import LinkedInAuthentication, LinkedInApplication, PERMISSIONS
 
@@ -43,35 +38,35 @@ class CustomHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsedurl = urlparse(self.path)
-        authed = liw.authentication.token is not None
+        authed = type(liw.authentication.token) is not NoneType
 
         if parsedurl.path == '/code':
             self.json_headers()
 
             liw.authentication.authorization_code = params_to_d(self.path).get('code')
             self.wfile.write(dumps({'access_token': liw.authentication.get_access_token(),
-                                    'routes': list(filter(lambda d: not d.startswith('_'), dir(liw.application)))}).encode('utf8'))
+                                    'routes': filter(lambda d: not d.startswith('_'), dir(liw.application))}))
         elif parsedurl.path == '/routes':
             self.json_headers()
 
-            self.wfile.write(dumps({'routes': list(filter(lambda d: not d.startswith('_'), dir(liw.application)))}).encode('utf8'))
+            self.wfile.write(dumps({'routes': filter(lambda d: not d.startswith('_'), dir(liw.application))}))
         elif not authed:
             self.json_headers()
 
             if not globals()['run_already']:
                 open_new_tab(liw.authentication.authorization_url)
             globals()['run_already'] = True
-            self.wfile.write(dumps({'path': self.path, 'authed': type(liw.authentication.token) is None}).encode('utf8'))
+            self.wfile.write(dumps({'path': self.path, 'authed': type(liw.authentication.token) is NoneType}))
         elif authed and len(parsedurl.path) and parsedurl.path[1:] in dir(liw.application):
             self.json_headers()
-            self.wfile.write(dumps(getattr(liw.application, parsedurl.path[1:])()).encode('utf8'))
+            self.wfile.write(dumps(getattr(liw.application, parsedurl.path[1:])()))
         else:
             self.json_headers(501)
-            self.wfile.write(dumps({'error': 'NotImplemented'}).encode('utf8'))
+            self.wfile.write(dumps({'error': 'NotImplemented'}))
 
 
 if __name__ == '__main__':
     httpd = ThreadingTCPServer(('localhost', PORT), CustomHandler)
 
-    print('Server started on port:{}'.format(PORT))
+    print 'Server started on port:', PORT
     httpd.serve_forever()

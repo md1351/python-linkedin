@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import requests
 from .exceptions import LinkedInError, get_exception_for_error_code
-import sys
-from io import StringIO
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 try:
     import simplejson as json
@@ -11,22 +14,6 @@ except ImportError:
         from django.utils import simplejson as json
     except ImportError:
         import json
-
-
-if sys.version_info < (3,):
-    import __builtin__
-
-    def to_utf8(x):
-        return __builtin__.unicode(x)
-
-    def to_string(x):
-        return str(x)
-else:
-    def to_utf8(x):
-        return x
-
-    def to_string(x):
-        return x
 
 
 def enum(enum_type='enum', base_classes=None, methods=None, **attrs):
@@ -44,13 +31,21 @@ def enum(enum_type='enum', base_classes=None, methods=None, **attrs):
         methods = {}
 
     base_classes = base_classes + (object,)
-    for k, v in methods.items():
+    for k, v in methods.iteritems():
         methods[k] = classmethod(v)
 
     attrs['enums'] = attrs.copy()
     methods.update(attrs)
     methods['__init__'] = __init__
-    return type(to_string(enum_type), base_classes, methods)
+    return type(enum_type, base_classes, methods)
+
+
+def to_utf8(st):
+    if isinstance(st, unicode):
+        return st.encode('utf-8')
+    else:
+        return bytes(st)
+
 
 def raise_for_error(response):
     try:
